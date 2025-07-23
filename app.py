@@ -450,6 +450,7 @@ def ejecutar_analisis_empresarial(nombre, industria, ubicacion, idioma, tipo_ana
         
         if resultado and resultado.get("success"):
             st.markdown("### ✅ Análisis completado exitosamente!")
+            
             # Guardar resultado en session state
             st.session_state['analysis_result'] = resultado
             st.session_state['analysis_completed'] = True
@@ -1258,9 +1259,234 @@ def show_dashboard_page():
     st.info("Dashboard en desarrollo...")
 
 def show_history_page():
-    """Historial de análisis realizados"""
+    """Historial de análisis realizados - Lee archivos existentes"""
     st.header("📁 Historial de Análisis")
-    st.info("Historial en desarrollo...")
+    
+    # Ruta a la carpeta de resultados
+    try:
+        project_root = Path(__file__).parent.parent
+        resultados_dir = project_root / "resultados"
+        
+        if not resultados_dir.exists():
+            st.info("📭 No se encontró la carpeta de resultados")
+            st.markdown("""
+            ### 🚀 ¿Cómo empezar?
+            1. Ve a la página **📊 Análisis Empresarial**
+            2. Ejecuta algunos análisis
+            3. Los PDFs se guardarán automáticamente
+            4. Regresa aquí para descargarlos
+            """)
+            return
+        
+        # Buscar archivos PDF en la carpeta resultados
+        pdf_files = list(resultados_dir.glob("*.pdf"))
+        
+        if not pdf_files:
+            st.info("📭 No hay PDFs guardados aún")
+            st.markdown(f"""
+            ### 📂 Carpeta de resultados encontrada:
+            `{resultados_dir}`
+            
+            ### 🚀 Para generar análisis:
+            1. Ve a **📊 Análisis Empresarial**
+            2. Completa el formulario y ejecuta análisis
+            3. Los PDFs se guardarán automáticamente aquí
+            """)
+            return
+        
+        # Estadísticas
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("📄 PDFs Encontrados", len(pdf_files))
+        with col2:
+            total_size = sum(f.stat().st_size for f in pdf_files) / (1024*1024)  # MB
+            st.metric("� Tamaño Total", f"{total_size:.1f} MB")
+        with col3:
+            if pdf_files:
+                newest = max(pdf_files, key=lambda f: f.stat().st_mtime)
+                newest_date = datetime.fromtimestamp(newest.stat().st_mtime).strftime('%Y-%m-%d')
+                st.metric("📅 Más Reciente", newest_date)
+        
+        st.markdown("---")
+        
+        # Ordenar archivos por fecha (más recientes primero)
+        pdf_files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+        
+        # Mostrar lista de archivos
+        st.subheader(f"📋 Análisis Disponibles ({len(pdf_files)})")
+        
+        for i, pdf_file in enumerate(pdf_files):
+            # Obtener información del archivo
+            file_stat = pdf_file.stat()
+            file_size = file_stat.st_size / 1024  # KB
+            file_date = datetime.fromtimestamp(file_stat.st_mtime)
+            
+            # Extraer información del nombre del archivo
+            filename = pdf_file.name
+            
+            # Intentar extraer empresa y tipo del nombre
+            empresa_nombre = "Empresa"
+            tipo_analisis = "Análisis"
+            
+            if "Analisis_Empresarial_" in filename:
+                # Formato: Analisis_Empresarial_YYYYMMDD_HHMMSS.pdf
+                fecha_hora = filename.replace("Analisis_Empresarial_", "").replace(".pdf", "")
+                if len(fecha_hora) == 15:  # YYYYMMDD_HHMMSS
+                    fecha_str = fecha_hora[:8]
+                    hora_str = fecha_hora[9:]
+                    try:
+                        fecha_formateada = f"{fecha_str[:4]}-{fecha_str[4:6]}-{fecha_str[6:8]}"
+                        hora_formateada = f"{hora_str[:2]}:{hora_str[2:4]}:{hora_str[4:6]}"
+                    except:
+                        fecha_formateada = file_date.strftime('%Y-%m-%d')
+                        hora_formateada = file_date.strftime('%H:%M:%S')
+                else:
+                    fecha_formateada = file_date.strftime('%Y-%m-%d')
+                    hora_formateada = file_date.strftime('%H:%M:%S')
+            else:
+                fecha_formateada = file_date.strftime('%Y-%m-%d')
+                hora_formateada = file_date.strftime('%H:%M:%S')
+            
+            # Mostrar cada archivo en un expander
+            with st.expander(f"📊 {filename} ({file_size:.1f} KB) - {fecha_formateada}"):
+                
+                col_info1, col_info2 = st.columns(2)
+                
+                with col_info1:
+                    st.markdown(f"**� Archivo:** {filename}")
+                    st.markdown(f"**📅 Fecha:** {fecha_formateada}")
+                    st.markdown(f"**🕐 Hora:** {hora_formateada}")
+                
+                with col_info2:
+                    st.markdown(f"**💾 Tamaño:** {file_size:.1f} KB")
+                    st.markdown(f"**📂 Ubicación:** resultados/")
+                    st.markdown(f"**🔢 ID:** #{i+1}")
+                
+                # Botones de acción
+                col_btn1, col_btn2, col_btn3 = st.columns(3)
+                
+                with col_btn1:
+                    # Leer archivo y crear botón de descarga
+                    try:
+                        with open(pdf_file, 'rb') as f:
+                            pdf_data = f.read()
+                        
+                        st.download_button(
+                            label="⬇️ Descargar PDF",
+                            data=pdf_data,
+                            file_name=filename,
+                            mime="application/pdf",
+                            key=f"download_pdf_{i}",
+                            help="Descargar a tu carpeta de Descargas"
+                        )
+                    except Exception as e:
+                        st.error(f"❌ Error leyendo archivo: {e}")
+                
+                with col_btn2:
+                    if st.button(f"� Abrir Carpeta", key=f"open_folder_{i}"):
+                        # Comando para abrir la carpeta en Windows
+                        import subprocess
+                        try:
+                            subprocess.Popen(['explorer', str(resultados_dir)])
+                            st.success("✅ Carpeta abierta")
+                        except:
+                            st.info(f"📂 Ubicación: {resultados_dir}")
+                
+                with col_btn3:
+                    # Sistema de eliminación con confirmación mejorado
+                    delete_key = f"delete_confirm_{i}"
+                    
+                    if st.button(f"🗑️ Eliminar", key=f"delete_btn_{i}", help="Eliminar este PDF"):
+                        st.session_state[delete_key] = True
+                    
+                    # Mostrar confirmación si está activada
+                    if st.session_state.get(delete_key, False):
+                        st.warning(f"⚠️ ¿Eliminar **{filename}**?")
+                        
+                        col_conf1, col_conf2 = st.columns(2)
+                        
+                        with col_conf1:
+                            if st.button("✅ SÍ, Eliminar", key=f"yes_delete_{i}", type="primary"):
+                                try:
+                                    pdf_file.unlink()  # Eliminar archivo
+                                    st.success(f"✅ {filename} eliminado correctamente")
+                                    # Limpiar estado de confirmación
+                                    if delete_key in st.session_state:
+                                        del st.session_state[delete_key]
+                                    st.rerun()  # Recargar página
+                                except Exception as e:
+                                    st.error(f"❌ Error eliminando: {e}")
+                        
+                        with col_conf2:
+                            if st.button("❌ Cancelar", key=f"cancel_delete_{i}"):
+                                # Limpiar estado de confirmación
+                                if delete_key in st.session_state:
+                                    del st.session_state[delete_key]
+                                st.rerun()
+        
+        # Opciones masivas
+        st.markdown("---")
+        st.subheader("🗂️ Gestión Masiva")
+        
+        col_masiva1, col_masiva2 = st.columns(2)
+        
+        with col_masiva1:
+            if st.button("� Abrir Carpeta Resultados"):
+                import subprocess
+                try:
+                    subprocess.Popen(['explorer', str(resultados_dir)])
+                    st.success("✅ Carpeta abierta en explorador")
+                except:
+                    st.info(f"📂 Ubicación: {resultados_dir}")
+        
+        with col_masiva2:
+            # Sistema de eliminación masiva con confirmación
+            delete_all_key = "delete_all_confirm"
+            
+            if st.button("🗑️ Limpiar Todos los PDFs", use_container_width=True, type="secondary"):
+                st.session_state[delete_all_key] = True
+            
+            # Mostrar confirmación para eliminación masiva
+            if st.session_state.get(delete_all_key, False):
+                st.error(f"⚠️ **¿Eliminar TODOS los {len(pdf_files)} PDFs?**")
+                st.warning("Esta acción no se puede deshacer")
+                
+                col_mass1, col_mass2 = st.columns(2)
+                
+                with col_mass1:
+                    if st.button("✅ SÍ, Eliminar TODO", key="confirm_delete_all", type="primary"):
+                        try:
+                            count = 0
+                            for pdf_file in pdf_files:
+                                pdf_file.unlink()
+                                count += 1
+                            st.success(f"✅ {count} archivos eliminados correctamente")
+                            # Limpiar estado
+                            if delete_all_key in st.session_state:
+                                del st.session_state[delete_all_key]
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"❌ Error eliminando archivos: {e}")
+                
+                with col_mass2:
+                    if st.button("❌ Cancelar", key="cancel_delete_all"):
+                        # Limpiar estado de confirmación
+                        if delete_all_key in st.session_state:
+                            del st.session_state[delete_all_key]
+                        st.rerun()
+        
+        # Información adicional
+        st.markdown("---")
+        st.info(f"📂 **Ubicación de archivos:** `{resultados_dir}`")
+        
+    except Exception as e:
+        st.error(f"❌ Error accediendo al historial: {e}")
+        st.markdown("""
+        ### 🔧 Solución:
+        1. Asegúrate de que la carpeta `resultados/` existe
+        2. Verifica permisos de lectura
+        3. Ejecuta algunos análisis primero
+        """)
 
 def show_tools_page():
     """Página de herramientas del sistema"""
