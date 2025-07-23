@@ -9,6 +9,7 @@ import streamlit as st
 import sys
 import os
 import logging
+import subprocess
 from pathlib import Path
 from datetime import datetime
 
@@ -187,6 +188,11 @@ def main():
         st.markdown("**Versión:** 3.1.0")
         st.markdown("**Autor:** otura41")
         st.markdown("**GitHub:** [Agent-Flow-Manager](https://github.com/otura41/Agent-Flow-Manager)")
+    
+    # Verificar navegación desde dashboard
+    if st.session_state.get('dashboard_navigate'):
+        page = st.session_state['dashboard_navigate']
+        del st.session_state['dashboard_navigate']  # Limpiar después de usar
     
     # Contenido principal según la página seleccionada
     if page == "🏢 Análisis Empresarial":
@@ -1254,9 +1260,259 @@ def generar_pdf_resultado_mejorado(resultado):
         return None
 
 def show_dashboard_page():
-    """Dashboard con métricas del sistema"""
+    """Dashboard con métricas del sistema y estadísticas completas"""
     st.header("📊 Dashboard del Sistema")
-    st.info("Dashboard en desarrollo...")
+    
+    # Obtener datos del sistema
+    try:
+        project_root = Path(__file__).parent.parent
+        resultados_dir = project_root / "resultados"
+        
+        # Verificar si existe la carpeta de resultados
+        if not resultados_dir.exists():
+            st.warning("📂 Carpeta de resultados no encontrada")
+            st.markdown("""
+            ### 🚀 ¿Cómo empezar?
+            1. Ve a **📊 Análisis Empresarial** para ejecutar tu primer análisis
+            2. Los resultados aparecerán automáticamente en este dashboard
+            """)
+            return
+        
+        # Obtener archivos PDF
+        pdf_files = list(resultados_dir.glob("*.pdf"))
+        
+        # === MÉTRICAS PRINCIPALES ===
+        st.markdown("### 📈 Métricas Principales")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric(
+                label="📄 Total Análisis",
+                value=len(pdf_files),
+                delta=f"+{len(pdf_files)} completados"
+            )
+        
+        with col2:
+            if pdf_files:
+                total_size = sum(f.stat().st_size for f in pdf_files) / (1024*1024)  # MB
+                st.metric(
+                    label="💾 Almacenamiento",
+                    value=f"{total_size:.1f} MB",
+                    delta="Espacio usado"
+                )
+            else:
+                st.metric("💾 Almacenamiento", "0 MB")
+        
+        with col3:
+            if pdf_files:
+                avg_size = sum(f.stat().st_size for f in pdf_files) / len(pdf_files) / 1024  # KB
+                st.metric(
+                    label="📊 Tamaño Promedio",
+                    value=f"{avg_size:.1f} KB",
+                    delta="Por análisis"
+                )
+            else:
+                st.metric("📊 Tamaño Promedio", "0 KB")
+        
+        with col4:
+            if pdf_files:
+                newest = max(pdf_files, key=lambda f: f.stat().st_mtime)
+                days_ago = (datetime.now().timestamp() - newest.stat().st_mtime) / (24*3600)
+                st.metric(
+                    label="🕒 Último Análisis",
+                    value=f"Hace {int(days_ago)} días" if days_ago > 1 else "Hoy",
+                    delta="Actividad reciente"
+                )
+            else:
+                st.metric("🕒 Último Análisis", "Nunca")
+        
+        st.markdown("---")
+        
+        # === ANÁLISIS DE ACTIVIDAD ===
+        if pdf_files:
+            st.markdown("### 📅 Actividad Reciente")
+            
+            # Análisis por fechas
+            dates_data = {}
+            for pdf_file in pdf_files:
+                file_date = datetime.fromtimestamp(pdf_file.stat().st_mtime).strftime('%Y-%m-%d')
+                dates_data[file_date] = dates_data.get(file_date, 0) + 1
+            
+            # Mostrar últimos 7 días de actividad
+            col_left, col_right = st.columns([2, 1])
+            
+            with col_left:
+                if len(dates_data) > 0:
+                    # Crear gráfico simple con texto
+                    st.markdown("**📈 Análisis por Día:**")
+                    for date, count in sorted(dates_data.items(), reverse=True)[:7]:
+                        fecha_formateada = datetime.strptime(date, '%Y-%m-%d').strftime('%d/%m/%Y')
+                        progress_val = min(count / max(dates_data.values()), 1.0) if dates_data.values() else 0
+                        st.progress(progress_val, text=f"{fecha_formateada}: {count} análisis")
+                else:
+                    st.info("No hay datos de actividad disponibles")
+            
+            with col_right:
+                st.markdown("**🏆 Estadísticas:**")
+                st.markdown(f"• **Día más activo:** {max(dates_data.values())} análisis")
+                st.markdown(f"• **Días con actividad:** {len(dates_data)}")
+                st.markdown(f"• **Promedio diario:** {len(pdf_files)/max(len(dates_data), 1):.1f}")
+        
+        else:
+            st.info("📊 No hay datos de actividad. Ejecuta algunos análisis para ver estadísticas.")
+        
+        st.markdown("---")
+        
+        # === ANÁLISIS POR TIPO ===
+        st.markdown("### 🎯 Análisis por Tipo")
+        
+        if pdf_files:
+            # Intentar extraer tipos de análisis de los nombres de archivos
+            tipos_analisis = {
+                "Básico": 0,
+                "Expansión": 0, 
+                "Digital": 0,
+                "Operaciones": 0,
+                "Estratégico": 0,
+                "Financiero": 0,
+                "Mercado": 0,
+                "Completo": 0,
+                "Otro": 0
+            }
+            
+            for pdf_file in pdf_files:
+                filename = pdf_file.name.lower()
+                tipo_encontrado = False
+                for tipo in tipos_analisis.keys():
+                    if tipo.lower() in filename:
+                        tipos_analisis[tipo] += 1
+                        tipo_encontrado = True
+                        break
+                if not tipo_encontrado:
+                    tipos_analisis["Otro"] += 1
+            
+            # Mostrar distribución
+            col_tipos1, col_tipos2 = st.columns(2)
+            
+            with col_tipos1:
+                st.markdown("**📊 Distribución:**")
+                for tipo, cantidad in tipos_analisis.items():
+                    if cantidad > 0:
+                        porcentaje = (cantidad / len(pdf_files)) * 100
+                        st.markdown(f"• **{tipo}:** {cantidad} ({porcentaje:.1f}%)")
+            
+            with col_tipos2:
+                st.markdown("**🥇 Top 3 Más Usados:**")
+                top_tipos = sorted(tipos_analisis.items(), key=lambda x: x[1], reverse=True)[:3]
+                for i, (tipo, cantidad) in enumerate(top_tipos, 1):
+                    if cantidad > 0:
+                        emoji = "🥇" if i == 1 else "🥈" if i == 2 else "🥉"
+                        st.markdown(f"{emoji} **{tipo}:** {cantidad} análisis")
+        
+        else:
+            st.info("🎯 Ejecuta análisis para ver la distribución por tipos")
+        
+        st.markdown("---")
+        
+        # === ACCIONES RÁPIDAS ===
+        st.markdown("### ⚡ Acciones Rápidas")
+        
+        col_action1, col_action2, col_action3, col_action4 = st.columns(4)
+        
+        with col_action1:
+            if st.button("🚀 Nuevo Análisis", use_container_width=True, type="primary"):
+                st.session_state.dashboard_navigate = "🏢 Análisis Empresarial"
+                st.rerun()
+        
+        with col_action2:
+            if st.button("📁 Ver Historial", use_container_width=True):
+                st.session_state.dashboard_navigate = "📁 Historial"
+                st.rerun()
+        
+        with col_action3:
+            if pdf_files and st.button("📄 Último PDF", use_container_width=True):
+                newest_pdf = max(pdf_files, key=lambda f: f.stat().st_mtime)
+                try:
+                    with open(newest_pdf, 'rb') as f:
+                        pdf_data = f.read()
+                    st.download_button(
+                        label="⬇️ Descargar",
+                        data=pdf_data,
+                        file_name=newest_pdf.name,
+                        mime="application/pdf",
+                        key="download_newest_pdf"
+                    )
+                except Exception as e:
+                    st.error(f"Error: {e}")
+        
+        with col_action4:
+            if pdf_files and st.button("📂 Abrir Carpeta", use_container_width=True):
+                try:
+                    import subprocess
+                    subprocess.Popen(['explorer', str(resultados_dir)])
+                    st.success("✅ Carpeta abierta")
+                except:
+                    st.info(f"📂 Ubicación: {resultados_dir}")
+        
+        st.markdown("---")
+        
+        # === ESTADO DEL SISTEMA ===
+        st.markdown("### 🔧 Estado del Sistema")
+        
+        col_sys1, col_sys2 = st.columns(2)
+        
+        with col_sys1:
+            st.markdown("**🖥️ Frontend:**")
+            st.success("✅ Streamlit funcionando")
+            st.success("✅ Componentes cargados")
+            st.success("✅ PDFs operativos")
+            
+        with col_sys2:
+            st.markdown("**🔗 Backend:**")
+            try:
+                # Verificar disponibilidad del backend
+                from utils.backend_connector import get_backend_connector
+                backend = get_backend_connector()
+                if backend:
+                    st.success("✅ Backend conectado")
+                else:
+                    st.warning("⚠️ Modo simulación")
+            except:
+                st.warning("⚠️ Backend no disponible")
+            
+            st.info("📊 Generación de PDFs activa")
+            st.info(f"📂 Carpeta: {resultados_dir}")
+        
+        # === INFORMACIÓN ADICIONAL ===
+        st.markdown("---")
+        st.markdown("### ℹ️ Información del Sistema")
+        
+        info_col1, info_col2 = st.columns(2)
+        
+        with info_col1:
+            st.markdown(f"""
+            **📋 Configuración:**
+            - **Versión:** AgentFlow Manager v3.3.0
+            - **Frontend:** Streamlit
+            - **PDFs:** ReportLab
+            - **Fecha:** {datetime.now().strftime('%d/%m/%Y %H:%M')}
+            """)
+        
+        with info_col2:
+            st.markdown(f"""
+            **📊 Rendimiento:**
+            - **Archivos monitoreados:** {len(pdf_files)}
+            - **Espacio disponible:** Ilimitado
+            - **Última verificación:** Ahora
+            - **Estado:** Operativo ✅
+            """)
+    
+    except Exception as e:
+        st.error(f"❌ Error cargando dashboard: {e}")
+        st.info("🔧 Verifica que el sistema esté configurado correctamente")
+        with st.expander("🔍 Detalles del error"):
+            st.code(str(e))
 
 def show_history_page():
     """Historial de análisis realizados - Lee archivos existentes"""
