@@ -12,6 +12,7 @@ Frontend web desarrollado con **Streamlit** para el sistema AgentFlow Manager. I
 ### 🎯 **Características Principales:**
 - ✅ **Interfaz intuitiva** para análisis empresariales
 - ✅ **Generación de PDFs profesionales** con gráficos optimizados
+- ✅ **Gestión completa del historial** de análisis con eliminación segura
 - ✅ **Sistema de limpieza de formularios** perfecto
 - ✅ **Arquitectura limpia** y altamente mantenible
 - ✅ **Múltiples tipos de análisis** disponibles
@@ -73,6 +74,14 @@ streamlit run app.py --server.port 8502
 - ✅ **Diseño corporativo** profesional
 - ✅ **Descarga inmediata** desde la interfaz
 
+### 📁 **Gestión del Historial:**
+- ✅ **Visualización completa** de PDFs guardados
+- ✅ **Eliminación individual** con confirmación de seguridad
+- ✅ **Limpieza masiva** con doble confirmación
+- ✅ **Estadísticas del historial** (cantidad, tamaño, fechas)
+- ✅ **Descarga directa** a carpeta de Descargas del usuario
+- ✅ **Navegación de carpetas** integrada
+
 ### 🔄 **Gestión de Formularios:**
 - ✅ **Limpieza completa** al iniciar nuevo análisis
 - ✅ **Validación de campos** en tiempo real
@@ -91,7 +100,14 @@ BACKEND_URL = "http://tu-backend-url:puerto"
 SIMULATION_MODE = False
 ```
 
-## 📊 Optimizaciones Recientes (v3.2.0)
+## 📊 Optimizaciones Recientes (v3.3.0)
+
+### ✅ **Gestión Completa del Historial (NUEVO):**
+- Página dedicada "📁 Historial" para gestionar todos los PDFs
+- Eliminación individual con sistema de confirmación seguro
+- Opción de limpieza masiva con doble verificación
+- Estadísticas completas: cantidad de PDFs, tamaño total, fecha más reciente
+- Integración con explorador de archivos del sistema
 
 ### ✅ **PDFs Profesionales Mejorados:**
 - Gráficos circulares con etiquetas perfectamente posicionadas
