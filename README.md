@@ -5,6 +5,28 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
 
+# 🚀 AgentFlow Manager - Frontend
+
+![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
+![Streamlit](https://img.shields.io/badge/Streamlit-1.28%2B-red)
+![License](https://img.shields.io/badge/License-MIT-green)
+![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)
+
+## 📸 Capturas de Pantalla
+
+Visualiza la interfaz y funcionalidades principales:
+
+![Dashboard Principal](images/dashboard.png)
+![Dashboard Alternativo 1](images/dashboard1.png)
+![Dashboard Alternativo 2](images/dashboard2.png)
+![Dashboard Alternativo 3](images/dashboard3.png)
+![Análisis Empresarial](images/analisis.png)
+![Creador de Contenido](images/creador.png)
+![Historial de PDFs](images/historial.png)
+![Historial Alternativo](images/historial1.png)
+![Ayuda](images/ayuda.png)
+![Ayuda Alternativa](images/ayuda1.png)
+
 ## 📋 Descripción
 
 Frontend web desarrollado con **Streamlit** para el sistema AgentFlow Manager. Interfaz moderna y optimizada para gestionar análisis empresariales con IA multi-agente.
